@@ -2,6 +2,7 @@ const {
   BN,
   constants: { ZERO_ADDRESS },
   ether,
+  balance,
   expectEvent,
   expectRevert,
   time,
@@ -109,6 +110,56 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       250,
       { from: orderOwner }
     );
+  });
+
+  it("create order with mywish eth fee without sending eth", async () => {
+    const fee = ether("0.05");
+    await swaps.setMyWishAddress(myWish, { from: owner });
+    await swaps.setMyWishOrderInitEthFee(fee);
+
+    const id = await swaps.createKey(accounts[0]);
+    await expectRevert.unspecified(
+      swaps.createOrder(
+        id,
+        baseToken.address,
+        quoteToken.address,
+        baseLimit,
+        quoteLimit,
+        now.add(duration.minutes("1")),
+        ZERO_ADDRESS,
+        ether("0"),
+        ether("0"),
+        broker,
+        100,
+        250,
+        { from: orderOwner }
+      )
+    );
+  });
+
+  it("create order with mywish eth fee", async () => {
+    const fee = ether("0.05");
+    await swaps.setMyWishAddress(myWish, { from: owner });
+    await swaps.setMyWishOrderInitEthFee(fee);
+
+    const id = await swaps.createKey(accounts[0]);
+    const balanceTracker = await balance.tracker(myWish);
+    await swaps.createOrder(
+      id,
+      baseToken.address,
+      quoteToken.address,
+      baseLimit,
+      quoteLimit,
+      now.add(duration.minutes("1")),
+      ZERO_ADDRESS,
+      ether("0"),
+      ether("0"),
+      broker,
+      100,
+      250,
+      { from: orderOwner, value: fee }
+    );
+    balanceTracker.delta().should.eventually.be.bignumber.equal(fee);
   });
 
   it("deposit to order with broker and mywish and check distribution", async () => {
