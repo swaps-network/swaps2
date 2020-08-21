@@ -14,7 +14,7 @@ interface ISwaps {
         address _brokerAddress,
         uint _brokerBasePercent,
         uint _brokerQuotePercent
-    ) external;
+    ) external payable;
 
     function deposit(bytes32 _id, address _token, uint _amount)
         external

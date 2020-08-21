@@ -42,9 +42,10 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
     //      id                base/quote         broker      percent
     mapping(bytes32 => mapping(address => mapping(address => uint))) public brokerPercents;
 
+    uint public myWishOrderInitEthFee;
     uint public myWishBasePercent;
     uint public myWishQuotePercent;
-    address public myWishAddress;
+    address payable public myWishAddress;
 
     modifier onlyInvestor(bytes32 _id, address _token) {
         require(
@@ -115,6 +116,8 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         uint newQuotePercent
     );
 
+    event MyWishOrderInitEthFeeChanged(uint oldFee, uint newFee);
+
     function tokenFallback(address, uint, bytes calldata) external {}
 
     function createOrder(
@@ -130,7 +133,7 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         address _brokerAddress,
         uint _brokerBasePercent,
         uint _brokerQuotePercent
-    ) external nonReentrant onlyWhenVaultDefined {
+    ) external payable nonReentrant onlyWhenVaultDefined {
         require(owners[_id] == address(0), "Order already exists");
         require(
             _baseAddress != _quoteAddress,
@@ -169,6 +172,14 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
             brokers[_id].push(myWishAddress);
             brokerPercents[_id][_baseAddress][myWishAddress] = myWishBasePercent;
             brokerPercents[_id][_quoteAddress][myWishAddress] = myWishQuotePercent;
+        }
+        require(
+            msg.value == myWishOrderInitEthFee,
+            "msg.value should be equals myWishOrderInitEthFee"
+        );
+        if (msg.value > 0) {
+            require(myWishAddress != address(0), "MyWish address is not set");
+            myWishAddress.transfer(msg.value);
         }
 
         emit OrderCreated(
@@ -290,7 +301,22 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         myWishQuotePercent = _quotePercent;
     }
 
-    function setMyWishAddress(address _myWishAddress) external onlyOwner {
+    function setMyWishOrderInitEthFee(uint _myWishOrderInitEthFee)
+        external
+        onlyOwner
+    {
+        require(_myWishOrderInitEthFee > 0, "Fee should not be negative");
+        emit MyWishOrderInitEthFeeChanged(
+            myWishOrderInitEthFee,
+            _myWishOrderInitEthFee
+        );
+        myWishOrderInitEthFee = _myWishOrderInitEthFee;
+    }
+
+    function setMyWishAddress(address payable _myWishAddress)
+        external
+        onlyOwner
+    {
         emit MyWishAddressChange(myWishAddress, _myWishAddress);
         myWishAddress = _myWishAddress;
     }
@@ -368,7 +394,11 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         return brokers[_id];
     }
 
-    function _allBrokersPercent(address _side, bytes32 _id) internal view returns (uint) {
+    function _allBrokersPercent(address _side, bytes32 _id)
+        internal
+        view
+        returns (uint)
+    {
         uint percents;
 
         for (uint i = 0; i < brokers[_id].length; i++) {
