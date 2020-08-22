@@ -49,7 +49,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
     quoteToken = await Token.new();
   });
 
-  it("create simple order", async () => {
+  it("#01. create simple order", async () => {
     const id = await swaps.createKey(accounts[0]);
 
     await swaps.createOrder(
@@ -65,11 +65,12 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       ZERO_ADDRESS,
       0,
       0,
+      0,
       { from: orderOwner }
     );
   });
 
-  it("create order with broker", async () => {
+  it("#02. create order with broker", async () => {
     const id = await swaps.createKey(accounts[0]);
 
     await swaps.createOrder(
@@ -85,11 +86,12 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       broker,
       100,
       250,
+      0,
       { from: orderOwner }
     );
   });
 
-  it("create order with broker and mywish broker", async () => {
+  it("#03. create order with broker and mywish broker", async () => {
     await swaps.setMyWishAddress(myWish, { from: owner });
     await swaps.setMyWishPercents(50, 70, { from: owner });
 
@@ -108,11 +110,12 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       broker,
       100,
       250,
+      0,
       { from: orderOwner }
     );
   });
 
-  it("create order with mywish eth fee without sending eth", async () => {
+  it("#04. create order with mywish eth fee without sending eth", async () => {
     const fee = ether("0.05");
     await swaps.setMyWishAddress(myWish, { from: owner });
     await swaps.setMyWishOrderInitEthFee(fee);
@@ -132,12 +135,13 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
         broker,
         100,
         250,
+        0,
         { from: orderOwner }
       )
     );
   });
 
-  it("create order with mywish eth fee", async () => {
+  it("#05. create order with mywish eth fee", async () => {
     const fee = ether("0.05");
     await swaps.setMyWishAddress(myWish, { from: owner });
     await swaps.setMyWishOrderInitEthFee(fee);
@@ -157,12 +161,13 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       broker,
       100,
       250,
+      0,
       { from: orderOwner, value: fee }
     );
     balanceTracker.delta().should.eventually.be.bignumber.equal(fee);
   });
 
-  it("deposit to order with broker and mywish and check distribution", async () => {
+  it("#06. deposit to order with broker and mywish and check distribution", async () => {
     const myWishBasePercent = new BN("50");
     const myWishQuotePercent = new BN("70");
     const id = await swaps.createKey(accounts[0]);
@@ -187,6 +192,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       broker,
       brokerBasePercent,
       brokerQuotePercent,
+      0,
       { from: orderOwner }
     );
 
@@ -259,7 +265,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
     }
   });
 
-  it("deposit to order with broker and check distribution", async () => {
+  it("#07. deposit to order with broker and check distribution", async () => {
     const id = await swaps.createKey(accounts[0]);
     const brokerBasePercent = new BN("100");
     const brokerQuotePercent = new BN("250");
@@ -277,6 +283,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       broker,
       brokerBasePercent,
       brokerQuotePercent,
+      0,
       { from: orderOwner }
     );
 
@@ -335,12 +342,10 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
     }
   });
 
-  it("deposit to order with mywish and check distribution", async () => {
+  it("#08. deposit to order with mywish and check distribution", async () => {
     const myWishBasePercent = new BN("50");
     const myWishQuotePercent = new BN("70");
     const id = await swaps.createKey(accounts[0]);
-    const brokerBasePercent = new BN("100");
-    const brokerQuotePercent = new BN("250");
 
     await swaps.setMyWishAddress(myWish, { from: owner });
     await swaps.setMyWishPercents(myWishBasePercent, myWishQuotePercent, {
@@ -358,6 +363,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       ether("0"),
       ether("0"),
       ZERO_ADDRESS,
+      0,
       0,
       0,
       { from: orderOwner }
@@ -418,7 +424,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
     }
   });
 
-  it("should fail with same addresses", async () => {
+  it("#09. should fail with same addresses", async () => {
     await expectRevert.unspecified(
       swaps.createOrder(
         await swaps.createKey(accounts[0]),
@@ -431,6 +437,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
         ether("0"),
         ether("0"),
         ZERO_ADDRESS,
+        0,
         0,
         0
       )
@@ -449,12 +456,13 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
         ether("0"),
         ZERO_ADDRESS,
         0,
+        0,
         0
       )
     );
   });
 
-  it("should fail expiration date in past", async () => {
+  it("#10. should fail expiration date in past", async () => {
     await expectRevert.unspecified(
       swaps.createOrder(
         await swaps.createKey(accounts[0]),
@@ -468,12 +476,13 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
         ether("0"),
         ZERO_ADDRESS,
         0,
+        0,
         0
       )
     );
   });
 
-  it("can deposit eth several times", async () => {
+  it("#11. can deposit eth several times", async () => {
     const id = await swaps.createKey(accounts[0]);
 
     await swaps.createOrder(
@@ -487,6 +496,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       ether("0"),
       ether("0"),
       ZERO_ADDRESS,
+      0,
       0,
       0
     );
@@ -506,7 +516,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
     }
   });
 
-  it("can deposit tokens several times", async () => {
+  it("#12. can deposit tokens several times", async () => {
     const id = await swaps.createKey(accounts[0]);
     await swaps.createOrder(
       id,
@@ -519,6 +529,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       ether("0"),
       ether("0"),
       ZERO_ADDRESS,
+      0,
       0,
       0
     );
@@ -536,5 +547,78 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
         balance: expectedBalance
       });
     }
+  });
+
+  it("#13. cannot refund before refundDelay didn't expire", async () => {
+    const id = await swaps.createKey(accounts[0]);
+    const refundDelay = duration.minutes("1");
+    await swaps.createOrder(
+      id,
+      baseToken.address,
+      quoteToken.address,
+      baseLimit,
+      quoteLimit,
+      now.add(duration.minutes("10")),
+      ZERO_ADDRESS,
+      ether("0"),
+      ether("0"),
+      ZERO_ADDRESS,
+      0,
+      0,
+      refundDelay,
+      { from: orderOwner }
+    );
+    await depositToken(swaps, id, baseToken, 1000, accounts[0]);
+    await expectRevert.unspecified(
+      swaps.refund(id, baseToken.address, { from: accounts[0] })
+    );
+  });
+
+  it("#14. can refund after refundDelay expired", async () => {
+    const id = await swaps.createKey(accounts[0]);
+    const refundDelay = duration.minutes("1");
+    await swaps.createOrder(
+      id,
+      baseToken.address,
+      quoteToken.address,
+      baseLimit,
+      quoteLimit,
+      now.add(duration.minutes("10")),
+      ZERO_ADDRESS,
+      ether("0"),
+      ether("0"),
+      ZERO_ADDRESS,
+      0,
+      0,
+      refundDelay,
+      { from: orderOwner }
+    );
+    await depositToken(swaps, id, baseToken, 1000, accounts[0]);
+    await time.increase(duration.minutes("1"));
+    await swaps.refund(id, baseToken.address, { from: accounts[0] });
+  });
+
+  it("#15. can refund after order expired but refundDelay didn't expire", async () => {
+    const id = await swaps.createKey(accounts[0]);
+    const refundDelay = duration.minutes("20");
+    await swaps.createOrder(
+      id,
+      baseToken.address,
+      quoteToken.address,
+      baseLimit,
+      quoteLimit,
+      now.add(duration.minutes("10")),
+      ZERO_ADDRESS,
+      ether("0"),
+      ether("0"),
+      ZERO_ADDRESS,
+      0,
+      0,
+      refundDelay,
+      { from: orderOwner }
+    );
+    await depositToken(swaps, id, baseToken, 1000, accounts[0]);
+    await time.increase(duration.minutes("11"));
+    await swaps.refund(id, baseToken.address, { from: accounts[0] });
   });
 });
