@@ -27,6 +27,8 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
     mapping(bytes32 => bool) public isSwapped;
     //     id          cancelled?
     mapping(bytes32 => bool) public isCancelled;
+    //      id         refundDelayInSeconds
+    mapping(bytes32 => uint) public refundDelays;
     //      id                base/quote  limit
     mapping(bytes32 => mapping(address => uint)) public limits;
     //      id                base/quote  raised
@@ -35,6 +37,8 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
     mapping(bytes32 => mapping(address => address[])) public investors;
     //      id                base/quote         investor    amount
     mapping(bytes32 => mapping(address => mapping(address => uint))) public investments;
+    //      id                investor    timestamp
+    mapping(bytes32 => mapping(address => uint)) public lastDepositsTimestamps;
     //      id                base/quote  minLimit
     mapping(bytes32 => mapping(address => uint)) public minInvestments;
     //      id         brokers
@@ -132,8 +136,9 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         uint _minQuoteInvestment,
         address _brokerAddress,
         uint _brokerBasePercent,
-        uint _brokerQuotePercent
-    ) external payable nonReentrant onlyWhenVaultDefined {
+        uint _brokerQuotePercent,
+        uint _refundDelaySeconds
+    ) external payable onlyWhenVaultDefined {
         require(owners[_id] == address(0), "Order already exists");
         require(
             _baseAddress != _quoteAddress,
@@ -152,6 +157,10 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         require(
             _brokerQuotePercent.add(myWishQuotePercent) <= 10000,
             "Quote percent sum should be less than 100%"
+        );
+        require(
+            _refundDelaySeconds >= 0,
+            "Refund delay should not be negative"
         );
 
         owners[_id] = msg.sender;
@@ -181,6 +190,7 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
             require(myWishAddress != address(0), "MyWish address is not set");
             myWishAddress.transfer(msg.value);
         }
+        refundDelays[_id] = _refundDelaySeconds;
 
         emit OrderCreated(
             _id,
@@ -261,11 +271,20 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         require(!isCancelled[_id], "Order cancelled");
         require(!isSwapped[_id], "Already swapped");
         address user = msg.sender;
+        uint refundUnlockTime = lastDepositsTimestamps[_id][user].add(
+            refundDelays[_id]
+        );
+        if (now <= expirationTimestamps[_id]) {
+            require(
+                refundUnlockTime <= now,
+                "Refund is locked for refundDelays(id) seconds"
+            );
+        }
         uint investment = investments[_id][_token][user];
         if (investment > 0) {
             delete investments[_id][_token][user];
         }
-
+        delete lastDepositsTimestamps[_id][user];
         _removeInvestor(investors[_id][_token], user);
 
         if (investment > 0) {
@@ -535,6 +554,7 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         );
 
         raised[_id][_token] = raised[_id][_token].add(amount);
+        lastDepositsTimestamps[_id][_from] = now;
         emit Deposit(
             _id,
             _token,
