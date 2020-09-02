@@ -29,6 +29,8 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
     mapping(bytes32 => bool) public isCancelled;
     //      id         refundDelayInSeconds
     mapping(bytes32 => uint) public refundDelays;
+    //      id         isNoRefund
+    mapping(bytes32 => bool) public isNoRefund;
     //      id                base/quote  limit
     mapping(bytes32 => mapping(address => uint)) public limits;
     //      id                base/quote  raised
@@ -158,10 +160,15 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
             _brokerQuotePercent.add(myWishQuotePercent) <= 10000,
             "Quote percent sum should be less than 100%"
         );
-        require(
-            _refundDelaySeconds >= 0,
-            "Refund delay should not be negative"
-        );
+        if (_refundDelaySeconds == uint(-1)) {
+            isNoRefund[_id] = true;
+        } else {
+            require(
+                _refundDelaySeconds >= 0,
+                "Refund delay should not be negative"
+            );
+            refundDelays[_id] = _refundDelaySeconds;
+        }
 
         owners[_id] = msg.sender;
         baseAddresses[_id] = _baseAddress;
@@ -190,7 +197,6 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
             require(myWishAddress != address(0), "MyWish address is not set");
             myWishAddress.transfer(msg.value);
         }
-        refundDelays[_id] = _refundDelaySeconds;
 
         emit OrderCreated(
             _id,
@@ -246,7 +252,10 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
     {
         require(!isCancelled[_id], "Already cancelled");
         require(!isSwapped[_id], "Already swapped");
-
+        require(
+            !isNoRefund[_id],
+            "You cannot cancel orders created with 'isNoRefund' flag"
+        );
         address[2] memory tokens = [baseAddresses[_id], quoteAddresses[_id]];
         for (uint t = 0; t < tokens.length; t++) {
             address token = tokens[t];
@@ -271,10 +280,14 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         require(!isCancelled[_id], "Order cancelled");
         require(!isSwapped[_id], "Already swapped");
         address user = msg.sender;
-        uint refundUnlockTime = lastDepositsTimestamps[_id][user].add(
-            refundDelays[_id]
-        );
         if (now <= expirationTimestamps[_id]) {
+            require(
+                !isNoRefund[_id],
+                "You cannot refund orders created with 'isNoRefund' flag before expiration"
+            );
+            uint refundUnlockTime = lastDepositsTimestamps[_id][user].add(
+                refundDelays[_id]
+            );
             require(
                 refundUnlockTime <= now,
                 "Refund is locked for refundDelays(id) seconds"

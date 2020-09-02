@@ -621,4 +621,75 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
     await time.increase(duration.minutes("11"));
     await swaps.refund(id, baseToken.address, { from: accounts[0] });
   });
+
+  it("#16. cannot refund before expiration and can refund after expiration on 'noRefund'", async () => {
+    const id = await swaps.createKey(accounts[0]);
+    await swaps.createOrder(
+      id,
+      baseToken.address,
+      quoteToken.address,
+      baseLimit,
+      quoteLimit,
+      now.add(duration.minutes("10")),
+      ZERO_ADDRESS,
+      ether("0"),
+      ether("0"),
+      ZERO_ADDRESS,
+      0,
+      0,
+      -1,
+      { from: orderOwner }
+    );
+    await depositToken(swaps, id, baseToken, 1000, accounts[0]);
+    await expectRevert.unspecified(
+      swaps.refund(id, baseToken.address, { from: accounts[0] })
+    );
+    await time.increase(duration.minutes("11"));
+    await swaps.refund(id, baseToken.address, { from: accounts[0] });
+  });
+
+  // cancel and noRefund
+  it("#17. can cancel order if no 'noRefund'", async () => {
+    const id = await swaps.createKey(accounts[0]);
+    await swaps.createOrder(
+      id,
+      baseToken.address,
+      quoteToken.address,
+      baseLimit,
+      quoteLimit,
+      now.add(duration.minutes("10")),
+      ZERO_ADDRESS,
+      ether("0"),
+      ether("0"),
+      ZERO_ADDRESS,
+      0,
+      0,
+      0,
+      { from: orderOwner }
+    );
+    await depositToken(swaps, id, baseToken, 1000, accounts[0]);
+    await expectRevert.unspecified(swaps.cancel(id, { from: accounts[0] }));
+    await swaps.cancel(id, { from: orderOwner });
+  });
+
+  it("#18. cannot cancel order on 'noRefund'", async () => {
+    const id = await swaps.createKey(accounts[0]);
+    await swaps.createOrder(
+      id,
+      baseToken.address,
+      quoteToken.address,
+      baseLimit,
+      quoteLimit,
+      now.add(duration.minutes("10")),
+      ZERO_ADDRESS,
+      ether("0"),
+      ether("0"),
+      ZERO_ADDRESS,
+      0,
+      0,
+      -1,
+      { from: orderOwner }
+    );
+    await expectRevert.unspecified(swaps.cancel(id, { from: orderOwner }));
+  });
 });
