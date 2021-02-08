@@ -67,8 +67,14 @@ module.exports = {
             confirmations: 10,
             timeoutBlocks: 200,
             skipDryRun: true
+        },
+        maticTestnet: {
+            provider: () => new HDWalletProvider(MNEMONIC, `https://rpc-mumbai.matic.today`),
+            network_id: 80001,
+            confirmations: 2,
+            timeoutBlocks: 200,
+            skipDryRun: true
         }
-
     },
 
     compilers: {
@@ -78,8 +84,7 @@ module.exports = {
                 optimizer: {
                     enabled: true,
                     runs: 999999
-                },
-                evmVersion: 'default'
+                }
             }
         }
     }
