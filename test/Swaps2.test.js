@@ -64,7 +64,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       ZERO_ADDRESS,
       0,
       0,
-      { from: orderOwner }
+      { from: orderOwner, value: (await swaps.feeAmount()) }
     );
   });
 
@@ -84,7 +84,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       broker,
       100,
       250,
-      { from: orderOwner }
+      { from: orderOwner, value: (await swaps.feeAmount()) }
     );
   });
 
@@ -107,7 +107,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       broker,
       100,
       250,
-      { from: orderOwner }
+      { from: orderOwner, value: (await swaps.feeAmount()) }
     );
   });
 
@@ -136,7 +136,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       broker,
       brokerBasePercent,
       brokerQuotePercent,
-      { from: orderOwner }
+      { from: orderOwner, value: (await swaps.feeAmount()) }
     );
 
     const baseAmounts = [];
@@ -226,7 +226,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       broker,
       brokerBasePercent,
       brokerQuotePercent,
-      { from: orderOwner }
+      { from: orderOwner, value: (await swaps.feeAmount()) }
     );
 
     const baseAmounts = [];
@@ -309,7 +309,7 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       ZERO_ADDRESS,
       0,
       0,
-      { from: orderOwner }
+      { from: orderOwner, value: (await swaps.feeAmount()) }
     );
 
     const baseAmounts = [];
@@ -437,7 +437,8 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       ether("0"),
       ZERO_ADDRESS,
       0,
-      0
+      0,
+      { value: (await swaps.feeAmount()) }
     );
 
     const from = accounts[0];
@@ -469,7 +470,8 @@ contract("Swaps2", ([owner, myWish, broker, orderOwner, ...accounts]) => {
       ether("0"),
       ZERO_ADDRESS,
       0,
-      0
+      0,
+      { value: (await swaps.feeAmount()) }
     );
 
     const from = accounts[0];

@@ -12,6 +12,9 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
 
     uint public MAX_INVESTORS = 10;
 
+    uint256 public feeAmount;
+    address payable public feeAddress;
+
     Vault public vault;
     //     id          whiteAddr
     mapping(bytes32 => address) public baseOnlyInvestor;
@@ -49,23 +52,32 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
     modifier onlyInvestor(bytes32 _id, address _token) {
         require(
             _isInvestor(_id, _token, msg.sender),
-            "Allowed only for investors"
+            "Swaps: Allowed only for investors"
         );
         _;
     }
 
     modifier onlyWhenVaultDefined() {
-        require(address(vault) != address(0), "Vault is not defined");
+        require(address(vault) != address(0), "Swaps: Vault is not defined");
         _;
     }
 
     modifier onlyOrderOwner(bytes32 _id) {
-        require(msg.sender == owners[_id], "Allowed only for owner");
+        require(msg.sender == owners[_id], "Swaps: Allowed only for owner");
         _;
     }
 
     modifier onlyWhenOrderExists(bytes32 _id) {
-        require(owners[_id] != address(0), "Order doesn't exist");
+        require(owners[_id] != address(0), "Swaps: Order doesn't exist");
+        _;
+    }
+
+    modifier hasFeeAndTransferIt {
+        require(
+            msg.value >= feeAmount,
+            "Swaps: Not enough fee"
+        );
+        feeAddress.transfer(msg.value);
         _;
     }
 
@@ -115,6 +127,14 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         uint newQuotePercent
     );
 
+    constructor(
+        uint256 _feeAmount,
+        address payable _feeAddress
+    ) public {
+        feeAmount = _feeAmount;
+        feeAddress = _feeAddress;
+    }
+
     function tokenFallback(address, uint, bytes calldata) external {}
 
     function createOrder(
@@ -130,25 +150,31 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         address _brokerAddress,
         uint _brokerBasePercent,
         uint _brokerQuotePercent
-    ) external nonReentrant onlyWhenVaultDefined {
-        require(owners[_id] == address(0), "Order already exists");
+    )
+        external
+        payable
+        nonReentrant
+        onlyWhenVaultDefined
+        hasFeeAndTransferIt
+    {
+        require(owners[_id] == address(0), "Swaps: Order already exists");
         require(
             _baseAddress != _quoteAddress,
-            "Exchanged tokens must be different"
+            "Swaps: Exchanged tokens must be different"
         );
-        require(_baseLimit > 0, "Base limit must be positive");
-        require(_quoteLimit > 0, "Quote limit must be positive");
+        require(_baseLimit > 0, "Swaps: Base limit must be positive");
+        require(_quoteLimit > 0, "Swaps: Quote limit must be positive");
         require(
             _expirationTimestamp > now,
-            "Expiration time must be in future"
+            "Swaps: Expiration time must be in future"
         );
         require(
             _brokerBasePercent.add(myWishBasePercent) <= 10000,
-            "Base percent sum should be less than 100%"
+            "Swaps: Base percent sum should be less than 100%"
         );
         require(
             _brokerQuotePercent.add(myWishQuotePercent) <= 10000,
-            "Quote percent sum should be less than 100%"
+            "Swaps: Quote percent sum should be less than 100%"
         );
 
         owners[_id] = msg.sender;
@@ -198,18 +224,18 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         if (_token == address(0)) {
             require(
                 msg.value == _amount,
-                "Payable value should be equals value"
+                "Swaps: Payable value should be equals value"
             );
             address(vault).transfer(msg.value);
         } else {
-            require(msg.value == 0, "Payable not allowed here");
+            require(msg.value == 0, "Swaps: Payable not allowed here");
             uint allowance = IERC20(_token).allowance(
                 msg.sender,
                 address(this)
             );
             require(
                 _amount <= allowance,
-                "Allowance should be not less than amount"
+                "Swaps: Allowance should be not less than amount"
             );
             IERC20(_token).transferFrom(msg.sender, address(vault), _amount);
         }
@@ -223,8 +249,8 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         onlyWhenVaultDefined
         onlyWhenOrderExists(_id)
     {
-        require(!isCancelled[_id], "Already cancelled");
-        require(!isSwapped[_id], "Already swapped");
+        require(!isCancelled[_id], "Swaps: Already cancelled");
+        require(!isSwapped[_id], "Swaps: Already swapped");
 
         address[2] memory tokens = [baseAddresses[_id], quoteAddresses[_id]];
         for (uint t = 0; t < tokens.length; t++) {
@@ -247,8 +273,8 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         onlyWhenVaultDefined
         onlyWhenOrderExists(_id)
     {
-        require(!isCancelled[_id], "Order cancelled");
-        require(!isSwapped[_id], "Already swapped");
+        require(!isCancelled[_id], "Swaps: Order cancelled");
+        require(!isSwapped[_id], "Swaps: Already swapped");
         address user = msg.sender;
         uint investment = investments[_id][_token][user];
         if (investment > 0) {
@@ -273,10 +299,10 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         external
         onlyOwner
     {
-        require(_basePercent <= 10000, "Base percent should be less than 100%");
+        require(_basePercent <= 10000, "Swaps: Base percent should be less than 100%");
         require(
             _quotePercent <= 10000,
-            "Quote percent should be less than 100%"
+            "Swaps: Quote percent should be less than 100%"
         );
 
         emit MyWishPercentsChange(
@@ -380,10 +406,10 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
     }
 
     function _swap(bytes32 _id) internal {
-        require(!isSwapped[_id], "Already swapped");
-        require(!isCancelled[_id], "Already cancelled");
-        require(isBaseFilled(_id), "Base tokens not filled");
-        require(isQuoteFilled(_id), "Quote tokens not filled");
+        require(!isSwapped[_id], "Swaps: Already swapped");
+        require(!isCancelled[_id], "Swaps: Already cancelled");
+        require(isBaseFilled(_id), "Swaps: Base tokens not filled");
+        require(isQuoteFilled(_id), "Swaps: Quote tokens not filled");
         require(now <= expirationTimestamps[_id], "Contract expired");
 
         _distribute(_id, baseAddresses[_id], quoteAddresses[_id]);
@@ -461,19 +487,19 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         uint amount = _amount;
         require(
             baseAddresses[_id] == _token || quoteAddresses[_id] == _token,
-            "You can deposit only base or quote currency"
+            "Swaps: You can deposit only base or quote currency"
         );
         require(
             raised[_id][_token] < limits[_id][_token],
-            "Limit already reached"
+            "Swaps: Limit already reached"
         );
-        require(now <= expirationTimestamps[_id], "Contract expired");
+        require(now <= expirationTimestamps[_id], "Swaps: Contract expired");
         if (baseAddresses[_id] == _token && baseOnlyInvestor[_id] != address(
             0
         )) {
             require(
                 msg.sender == baseOnlyInvestor[_id],
-                "Allowed only for specified address"
+                "Swaps: Allowed only for specified address"
             );
         }
         if (limits[_id][_token].sub(
@@ -481,14 +507,14 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         ) > minInvestments[_id][_token]) {
             require(
                 _amount >= minInvestments[_id][_token],
-                "Should not be less than minimum value"
+                "Swaps: Should not be less than minimum value"
             );
         }
 
         if (!_isInvestor(_id, _token, _from)) {
             require(
                 investors[_id][_token].length < MAX_INVESTORS,
-                "Too many investors"
+                "Swaps: Too many investors"
             );
             investors[_id][_token].push(_from);
         }
