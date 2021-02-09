@@ -74,7 +74,7 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
 
     modifier hasFeeAndTransferIt {
         require(
-            msg.value >= feeAmount,
+            msg.value == feeAmount,
             "Swaps: Not enough fee"
         );
         feeAddress.transfer(msg.value);
