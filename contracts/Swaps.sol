@@ -321,6 +321,17 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         myWishAddress = _myWishAddress;
     }
 
+    function setFeeParameters(
+        uint256 _feeAmount,
+        address payable _feeAddress
+    )
+        external
+        onlyOwner
+    {
+        feeAmount = _feeAmount;
+        feeAddress = _feeAddress;
+    }
+
     function createKey(address _owner) public view returns (bytes32 result) {
         uint creationTime = now;
         result = 0x0000000000000000000000000000000000000000000000000000000000000000;
