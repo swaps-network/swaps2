@@ -17,6 +17,7 @@
     "openzeppelin-test-helpers": "^0.4.0"
   },
   "dependencies": {
+    "chai-as-promised": "^7.1.1",
     "dotenv": "^8.2.0",
     "openzeppelin-solidity": "2.2.0",
     "sc-library": "github:MyWishPlatform/sc-library#0.7.1",
