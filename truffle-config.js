@@ -68,8 +68,15 @@ module.exports = {
             timeoutBlocks: 200,
             skipDryRun: true
         },
+        maticMainnet: {
+            provider: () => new HDWalletProvider(MNEMONIC, "https://rpc-mainnet.matic.network"),
+            network_id: 137,
+            confirmations: 2,
+            timeoutBlocks: 200,
+            skipDryRun: false
+        },
         maticTestnet: {
-            provider: () => new HDWalletProvider(MNEMONIC, `https://rpc-mumbai.matic.today`),
+            provider: () => new HDWalletProvider(MNEMONIC, "https://rpc-mumbai.matic.today"),
             network_id: 80001,
             confirmations: 2,
             timeoutBlocks: 200,
