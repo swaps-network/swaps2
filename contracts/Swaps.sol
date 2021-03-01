@@ -138,7 +138,6 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
     function tokenFallback(address, uint, bytes calldata) external {}
 
     function createOrder(
-        bytes32 _id,
         address _baseAddress,
         address _quoteAddress,
         uint _baseLimit,
@@ -156,7 +155,9 @@ contract Swaps is Ownable, ISwaps, ReentrancyGuard {
         nonReentrant
         onlyWhenVaultDefined
         hasFeeAndTransferIt
+        returns(bytes32 _id)
     {
+        _id = createKey(msg.sender);
         require(owners[_id] == address(0), "Swaps: Order already exists");
         require(
             _baseAddress != _quoteAddress,
